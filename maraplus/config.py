@@ -10,6 +10,7 @@ class Config(config_orig.Config):
         self,
         migration_file,
         database,
+        extra_mig_files=None,
         db_user=None,
         db_password=None,
         db_password_file=None,
@@ -45,6 +46,7 @@ class Config(config_orig.Config):
             web_custom_html=web_custom_html,
             web_healthcheck_path=web_healthcheck_path,
         )
+        self.extra_mig_files = extra_mig_files
 
     @classmethod
     def from_parse_args(cls, args):
@@ -57,6 +59,7 @@ class Config(config_orig.Config):
         return cls(
             args.migration_file,
             args.database,
+            extra_mig_files=args.extra_mig_files,
             db_user=args.db_user,
             db_password=args.db_password,
             db_password_file=args.db_password_file,
@@ -77,6 +80,24 @@ class Config(config_orig.Config):
 def get_args_parser():
     """Create parser for command line options based on marabunta."""
     parser = config_orig.get_args_parser()
+    _actions = parser._actions
+    _group_actions = parser._optionals._group_actions
+    # Make --db-password not required. We want to allow
+    # --db-password-file as alternative.
+    _actions[4].required = False
+    parser.add_argument(
+        '-e',
+        '--extra-mig-files',
+        action=config_orig.EnvDefault,
+        envvar='MARABUNTA_EXTRA_MIG_FILES',
+        required=False,
+        nargs="+",
+        help="Extra migration file paths to merge with main one."
+    )
+    # Move new arguments near related ones for convenience.
+    # --extra-mig-files (move it after --migration-file)
+    _actions.insert(2, _actions.pop(-1))
+    _group_actions.insert(2, _group_actions.pop(-1))
     parser.add_argument(
         '--db-password-file',
         action=config_orig.EnvDefault,
@@ -84,12 +105,7 @@ def get_args_parser():
         required=False,
         help="File path storing Odoo's database password"
     )
-    # Move new argument just after `--db-password` for more convenience.
-    _actions = parser._actions
-    _actions.insert(5, _actions.pop(-1))
-    _group_actions = parser._optionals._group_actions
-    _group_actions.insert(5, _group_actions.pop(-1))
-    # Make --db-password not required. We want to allow
-    # --db-password-file as alternative.
-    _actions[4].required = False
+    # --db-password-file (move it after --db-password)
+    _actions.insert(6, _actions.pop(-1))
+    _group_actions.insert(6, _group_actions.pop(-1))
     return parser
