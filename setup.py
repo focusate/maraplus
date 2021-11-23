@@ -47,6 +47,6 @@ setup(
         'Programming Language :: Python :: Implementation :: PyPy'
     ],
     entry_points={
-        'console_scripts': ['maraplus = marabunta.main:main']
+        'console_scripts': ['maraplus = maraplus.core:main']
     },
 )
