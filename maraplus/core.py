@@ -33,10 +33,11 @@ def migrate(config):
     webserver = core_orig.WebServer(webapp)
     webserver.daemon = True
     webserver.start()
+    extra_mig_files = config.extra_mig_files or []
     # Pass extra migration files alongside main one.
     migration_parser = YamlParser.parse_from_file(
         config.migration_file,
-        *config.extra_mig_files,
+        *extra_mig_files,
     )
     migration = migration_parser.parse()
 

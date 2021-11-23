@@ -77,6 +77,17 @@ class Config(config_orig.Config):
         )
 
 
+class NargsEnvDefault(config_orig.EnvDefault):
+    """ENV handler for nargs type of arguments."""
+
+    def get_default(self, envvar):
+        """Extend to convert env value to list."""
+        value = super().get_default(envvar)
+        if value:
+            return [p for p in value.split(' ') if p]
+        return value
+
+
 def get_args_parser():
     """Create parser for command line options based on marabunta."""
     parser = config_orig.get_args_parser()
@@ -88,7 +99,7 @@ def get_args_parser():
     parser.add_argument(
         '-e',
         '--extra-mig-files',
-        action=config_orig.EnvDefault,
+        action=NargsEnvDefault,
         envvar='MARABUNTA_EXTRA_MIG_FILES',
         required=False,
         nargs="+",
