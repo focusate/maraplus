@@ -1,3 +1,4 @@
+import re
 import functools
 import operator
 import os
@@ -17,6 +18,8 @@ VERSION_LIST_PATHS = [
     ['addons', 'install'],
     ['addons', 'upgrade'],
 ]
+
+DEL_OPT_RE = r'DEL->{(.*)}'
 
 
 # TODO: move this to footil.
@@ -79,7 +82,8 @@ class YamlParser(parser_orig.YamlParser):
         extras = [yaml.safe_load(fp) for fp in fps]
         self._merge_dict(['migration', 'options'], extras)
         self._merge_versions(extras)
-        self._clean_dupes_in_list_keys()
+        self._update_options(self._opt_clean_dupes)
+        self._update_options(self._opt_delete_marked)
         if os.environ.get('MARABUNTA_LOG_YAML'):
             print_decorated(f"YAML\n\n{yaml.dump(self.parsed)}")
 
@@ -119,17 +123,34 @@ class YamlParser(parser_orig.YamlParser):
         else:
             versions.append(version_new)
 
-    def _clean_dupes_in_list_keys(self):
-        # Using expected list keys to clean up values.
+    # Options update utilities after YAMLs are merged.
+
+    def _update_options(self, update_method):
         for version in self.parsed['migration']['versions']:
             for keys_path in self._version_list_paths:
                 try:
                     vals_list = _get_from_dict(version, keys_path)
-                    # Removing duplicates by preserving order.
-                    list_no_dupes = list(dict.fromkeys(vals_list))
-                    # Reusing same list, to have reference to related
-                    # dictionary.
-                    vals_list.clear()
-                    vals_list.extend(list_no_dupes)
+                    update_method(version, keys_path, vals_list)
                 except KeyError:
                     continue
+
+    def _opt_clean_dupes(self, version, keys_path, vals_list):
+        # Removing duplicates by preserving order.
+        list_no_dupes = list(dict.fromkeys(vals_list))
+        # Reusing same list, to have reference to related
+        # dictionary.
+        vals_list.clear()
+        vals_list.extend(list_no_dupes)
+
+    def _opt_delete_marked(self, version, keys_path, vals_list):
+        marks = []
+        to_delete = []
+        for opt in vals_list:
+            match = re.match(DEL_OPT_RE, opt)
+            if match:
+                marks.append(opt)
+                to_delete.append(match.groups()[0])
+        # Marks themselves are here to just mark what to delete. These
+        # must be removed as maraplus would not recognize it.
+        for to_del in marks + to_delete:
+            vals_list.remove(to_del)

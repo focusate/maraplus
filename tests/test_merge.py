@@ -68,6 +68,20 @@ migration:
           - stock
 """
 
+YAML_4 = """
+---
+migration:
+  versions:
+    - version: setup
+      operations:
+        pre:
+          - DEL->{echo 'pre-operation'}
+          - anthem songs.pre::main
+      addons:
+        install:
+          - DEL->{crm}
+"""
+
 # When YAML_1 is combined with YAML_2
 expected_yaml_dct_1 = {
     'migration': {
@@ -189,6 +203,43 @@ expected_yaml_dct_3 = {
         ]
     }
 }
+# When YAML_1 combined with YAML_4
+expected_yaml_dct_4 = {
+    'migration': {
+        'options': {
+            'install_command': 'odoo2',
+        },
+        'versions': [
+            {
+                'version': 'setup',
+                'operations': {
+                    'pre': [
+                        'anthem songs.pre::main',
+                    ],
+
+                },
+                'addons': {
+                    # Must be empty, because YAML_4 marks it for
+                    # deletion.
+                    'install': [],
+                    'upgrade': ['note'],
+                }
+            },
+            {
+                'version': '0.1.0',
+                'operations': {
+                    'post': [
+                        'echo \'post-operation\'',
+                    ],
+
+                },
+                'addons': {
+                    'install': ['web', 'contacts'],
+                }
+            },
+        ]
+    }
+}
 
 
 def test_01_merge_yaml():
@@ -214,3 +265,11 @@ def test_03_merge_yaml():
     y3 = StringIO(YAML_3)
     parser = YamlParser.parser_from_buffer(y1, y2, y3)
     assert parser.parsed == expected_yaml_dct_3
+
+
+def test_04_merge_yaml():
+    """Merge YAML_1 with YAML4."""
+    y1 = StringIO(YAML_1)
+    y2 = StringIO(YAML_4)
+    parser = YamlParser.parser_from_buffer(y1, y2)
+    assert parser.parsed == expected_yaml_dct_4
