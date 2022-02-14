@@ -2,7 +2,6 @@
 from io import StringIO
 from maraplus.parser import YamlParser
 
-
 YAML_1 = """
 ---
 migration:
@@ -18,6 +17,14 @@ migration:
           - crm
         upgrade:
           - note
+      modes:
+        prod:
+          operations:
+            pre:
+                - echo 'production-operation-1'
+          addons:
+            install:
+              - website
     - version: 0.1.0
       operations:
         post:
@@ -80,6 +87,12 @@ migration:
       addons:
         install:
           - DEL->{crm}
+      modes:
+        prod:
+            operations:
+              pre:
+                - DEL->{echo 'production-operation-1'}
+                - echo 'production-operation-2'
 """
 
 # When YAML_1 is combined with YAML_2
@@ -101,7 +114,17 @@ expected_yaml_dct_1 = {
                 'addons': {
                     'install': ['crm', 'account'],
                     'upgrade': ['note', 'hr'],
-                }
+                },
+                'modes': {
+                    'prod': {
+                        'operations': {
+                            'pre': ['echo \'production-operation-1\'']
+                        },
+                        'addons': {
+                            'install': ['website'],
+                        }
+                    }
+                },
             },
             {
                 'version': '0.1.0',
@@ -137,7 +160,17 @@ expected_yaml_dct_2 = {
                 'addons': {
                     'install': ['crm'],
                     'upgrade': ['note'],
-                }
+                },
+                'modes': {
+                    'prod': {
+                        'operations': {
+                            'pre': ['echo \'production-operation-1\'']
+                        },
+                        'addons': {
+                            'install': ['website'],
+                        }
+                    }
+                },
             },
             {
                 'version': '0.1.0',
@@ -179,7 +212,17 @@ expected_yaml_dct_3 = {
                 'addons': {
                     'install': ['crm', 'account'],
                     'upgrade': ['note', 'hr'],
-                }
+                },
+                'modes': {
+                    'prod': {
+                        'operations': {
+                            'pre': ['echo \'production-operation-1\'']
+                        },
+                        'addons': {
+                            'install': ['website'],
+                        }
+                    }
+                },
             },
             {
                 'version': '0.1.0',
@@ -223,7 +266,18 @@ expected_yaml_dct_4 = {
                     # deletion.
                     'install': [],
                     'upgrade': ['note'],
-                }
+                },
+                'modes': {
+                    'prod': {
+                        'operations': {
+                            # Must be updated by YAML_4.
+                            'pre': ['echo \'production-operation-2\'']
+                        },
+                        'addons': {
+                            'install': ['website'],
+                        }
+                    }
+                },
             },
             {
                 'version': '0.1.0',

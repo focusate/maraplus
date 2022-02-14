@@ -126,13 +126,18 @@ class YamlParser(parser_orig.YamlParser):
     # Options update utilities after YAMLs are merged.
 
     def _update_options(self, update_method):
-        for version in self.parsed['migration']['versions']:
+        def update_data(data):
             for keys_path in self._version_list_paths:
                 try:
-                    vals_list = _get_from_dict(version, keys_path)
-                    update_method(version, keys_path, vals_list)
+                    vals_list = _get_from_dict(data, keys_path)
+                    update_method(data, keys_path, vals_list)
                 except KeyError:
                     continue
+
+        for version in self.parsed['migration']['versions']:
+            update_data(version)
+            for mode in version.get('modes', {}).values():
+                update_data(mode)
 
     def _opt_clean_dupes(self, version, keys_path, vals_list):
         # Removing duplicates by preserving order.
