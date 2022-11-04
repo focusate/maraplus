@@ -5,7 +5,6 @@ import os
 from contextlib import ExitStack
 import yaml
 import mergedeep
-
 from marabunta import parser as parser_orig
 from marabunta.output import print_decorated
 from marabunta.exception import ParseError
@@ -20,6 +19,7 @@ VERSION_LIST_PATHS = [
 ]
 
 DEL_OPT_RE = r'DEL->{(.*)}'
+ENV_OPT_RE = r'(\$([A-Z0-9]+(?:_[A-Z0-9]+)*))'
 
 
 # TODO: move this to footil.
@@ -47,6 +47,9 @@ class YamlParser(parser_orig.YamlParser):
         parser = super().parser_from_buffer(fp)
         if extra_fps:
             parser._merge_yaml(extra_fps)
+        # Must be updated after all yaml are merged (if any) to make
+        # sure we are updating up to date dict.
+        parser._update_options(parser._opt_render_environ_vars)
         return parser
 
     @classmethod
@@ -58,7 +61,9 @@ class YamlParser(parser_orig.YamlParser):
                 fps = [stack.enter_context(open(fname)) for fname in filenames]
                 fp, extra_fps = fps[0], fps[1:]
                 return cls.parser_from_buffer(fp, *extra_fps)
-        return super().parse_from_file(filename)
+        parser = super().parse_from_file(filename)
+        parser._update_options(parser._opt_render_environ_vars)
+        return parser
 
     def check_dict_expected_keys(self, expected_keys, current, dict_name):
         """Extend to include 'install' key for addons dict."""
@@ -159,3 +164,11 @@ class YamlParser(parser_orig.YamlParser):
         # must be removed as maraplus would not recognize it.
         for to_del in marks + to_delete:
             vals_list.remove(to_del)
+
+    def _opt_render_environ_vars(self, version, keys_path, vals_list):
+        for idx, opt in enumerate(vals_list):
+            for placeholder, env_key in re.findall(ENV_OPT_RE, opt):
+                if env_key in os.environ:
+                    env_val = os.environ[env_key]
+                    opt = opt.replace(placeholder, env_val)
+                    vals_list[idx] = opt

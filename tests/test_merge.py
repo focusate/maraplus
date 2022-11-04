@@ -1,4 +1,5 @@
 """Test class for merging multiple yaml files into one."""
+import os
 from io import StringIO
 from maraplus.parser import YamlParser
 
@@ -83,7 +84,7 @@ migration:
       operations:
         pre:
           - DEL->{echo 'pre-operation'}
-          - anthem songs.pre::main
+          - anthem songs.pre::main -d $MY_EXISTING_VAR_1 -c $MY_EXISTING_VAR_2
       addons:
         install:
           - DEL->{crm}
@@ -92,7 +93,7 @@ migration:
             operations:
               pre:
                 - DEL->{echo 'production-operation-1'}
-                - echo 'production-operation-2'
+                - echo '$MY_NOT_NOT_EXISTING_VAT'
 """
 
 # When YAML_1 is combined with YAML_2
@@ -257,7 +258,7 @@ expected_yaml_dct_4 = {
                 'version': 'setup',
                 'operations': {
                     'pre': [
-                        'anthem songs.pre::main',
+                        'anthem songs.pre::main -d mydb -c /opt/odoo.conf',
                     ],
 
                 },
@@ -271,7 +272,7 @@ expected_yaml_dct_4 = {
                     'prod': {
                         'operations': {
                             # Must be updated by YAML_4.
-                            'pre': ['echo \'production-operation-2\'']
+                            'pre': ['echo \'$MY_NOT_NOT_EXISTING_VAT\'']
                         },
                         'addons': {
                             'install': ['website'],
@@ -323,6 +324,8 @@ def test_03_merge_yaml():
 
 def test_04_merge_yaml():
     """Merge YAML_1 with YAML4."""
+    os.environ["MY_EXISTING_VAR_1"] = "mydb"
+    os.environ["MY_EXISTING_VAR_2"] = "/opt/odoo.conf"
     y1 = StringIO(YAML_1)
     y2 = StringIO(YAML_4)
     parser = YamlParser.parser_from_buffer(y1, y2)
