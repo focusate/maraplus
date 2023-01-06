@@ -79,6 +79,8 @@ migration:
 YAML_4 = """
 ---
 migration:
+  options:
+    install_command: odoo3 -d $MY_EXISTING_VAR_1
   versions:
     - version: setup
       operations:
@@ -251,7 +253,7 @@ expected_yaml_dct_3 = {
 expected_yaml_dct_4 = {
     'migration': {
         'options': {
-            'install_command': 'odoo2',
+            'install_command': 'odoo3 -d mydb',
         },
         'versions': [
             {

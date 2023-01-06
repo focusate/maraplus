@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: "3.10"
       - name: Install tox
@@ -32,9 +32,9 @@ jobs:
         python: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
       - name: Install dependencies
@@ -42,7 +42,7 @@ jobs:
           pip install -U pip
           pip install -U setuptools
           sudo apt update
-          sudo apt install -y build-essential libpq-dev python-dev
+          sudo apt install -y build-essential libpq-dev python-dev-is-python3
       - name: Install tox
         run: pip install tox
       - name: Run tox
@@ -54,9 +54,9 @@ jobs:
     needs: [lint, test]
     if: startsWith(github.ref, 'refs/tags')
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
       - name: Install dependencies

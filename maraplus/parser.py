@@ -34,6 +34,15 @@ def _find_data_by_key(datas: list, key: str, val: any) -> dict:
             return data
 
 
+def _render_env_placeholders(opt):
+    new_opt = opt
+    for placeholder, env_key in re.findall(ENV_OPT_RE, opt):
+        if env_key in os.environ:
+            env_val = os.environ[env_key]
+            new_opt = new_opt.replace(placeholder, env_val)
+    return new_opt
+
+
 class YamlParser(parser_orig.YamlParser):
     """Parser that can additionally parse install addons option."""
 
@@ -49,7 +58,7 @@ class YamlParser(parser_orig.YamlParser):
             parser._merge_yaml(extra_fps)
         # Must be updated after all yaml are merged (if any) to make
         # sure we are updating up to date dict.
-        parser._update_options(parser._opt_render_environ_vars)
+        parser._render_environ_vars()
         return parser
 
     @classmethod
@@ -62,7 +71,7 @@ class YamlParser(parser_orig.YamlParser):
                 fp, extra_fps = fps[0], fps[1:]
                 return cls.parser_from_buffer(fp, *extra_fps)
         parser = super().parse_from_file(filename)
-        parser._update_options(parser._opt_render_environ_vars)
+        parser._render_environ_vars()
         return parser
 
     def check_dict_expected_keys(self, expected_keys, current, dict_name):
@@ -138,7 +147,6 @@ class YamlParser(parser_orig.YamlParser):
                     update_method(data, keys_path, vals_list)
                 except KeyError:
                     continue
-
         for version in self.parsed['migration']['versions']:
             update_data(version)
             for mode in version.get('modes', {}).values():
@@ -165,10 +173,15 @@ class YamlParser(parser_orig.YamlParser):
         for to_del in marks + to_delete:
             vals_list.remove(to_del)
 
+    def _render_environ_vars(self):
+        # TODO: render automatically in whole data, not just specific
+        # places!
+        options = self.parsed.get('migration', {}).get('options', {})
+        if options and options.get('install_command'):
+            cmd = options['install_command']
+            options['install_command'] = _render_env_placeholders(cmd)
+        self._update_options(self._opt_render_environ_vars)
+
     def _opt_render_environ_vars(self, version, keys_path, vals_list):
         for idx, opt in enumerate(vals_list):
-            for placeholder, env_key in re.findall(ENV_OPT_RE, opt):
-                if env_key in os.environ:
-                    env_val = os.environ[env_key]
-                    opt = opt.replace(placeholder, env_val)
-                    vals_list[idx] = opt
+            vals_list[idx] = _render_env_placeholders(opt)
