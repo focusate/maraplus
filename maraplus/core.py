@@ -4,13 +4,16 @@ from marabunta import core as core_orig
 from marabunta import parser as parser_orig
 from marabunta import model as model_orig
 from marabunta import runner as runner_orig
-from marabunta import database as database_orig
+from marabunta.database import MigrationTable
 from marabunta import web as web_orig
 
 from .config import Config, get_args_parser
 from .parser import YamlParser
 from .model import Version, VersionMode
 from .runner import VersionRunner
+from .database import Database
+
+TIMEOUT = 10
 
 
 def migrate(config):
@@ -41,8 +44,9 @@ def migrate(config):
     )
     migration = migration_parser.parse()
 
-    database = database_orig.Database(config)
-
+    database = Database(config)
+    # Wait to make sure connection is up before using it!
+    database.wait_for_connection(TIMEOUT)
     with database.connect() as lock_connection:
         application_lock = core_orig.ApplicationLock(lock_connection)
         application_lock.start()
@@ -63,7 +67,7 @@ def migrate(config):
             # migration
 
         try:
-            table = database_orig.MigrationTable(database)
+            table = MigrationTable(database)
             runner = runner_orig.Runner(config, migration, database, table)
             runner.perform()
         finally:
