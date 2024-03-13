@@ -16,4 +16,7 @@ Wrapper for :code:`marabunta` package, that adds some extra features:
 * If environment variable key is specified in configuration options, it will be
   replaced by its value, if such environment variable exists. E.g. if
   :code:`MY_ENV=test`, :code:`$MY_ENV` would be replaced by :code:`test`.
-
+* Can specify ``install_paths`` so modules are collected from specified file instead
+  of needing to explicitly specify in marabunta main yaml file. Modules specified in
+  these files are added into ``install`` option. If module already exists in ``install``
+  option, it is not added multiple times.

@@ -1,0 +1,5 @@
+---
+install:
+  - sale
+  - account
+  - stock
