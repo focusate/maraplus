@@ -53,8 +53,8 @@ class Config(config_orig.Config):
         """Override to create config with extra arguments."""
         if not (bool(args.db_password) ^ bool(args.db_password_file)):
             raise TypeError(
-                "--db-password and --db-password-file arguments are mutually" +
-                " exclusive"
+                "--db-password and --db-password-file arguments are mutually"
+                + " exclusive"
             )
         return cls(
             args.migration_file,

@@ -11,21 +11,69 @@ from marabunta.exception import ParseError
 
 ADDITIVE_STRAT = mergedeep.Strategy.ADDITIVE
 
+# TODO: Should use tuples here to make sure data is immutable.
 VERSION_LIST_PATHS = [
     ['operations', 'pre'],
     ['operations', 'post'],
     ['addons', 'install'],
     ['addons', 'upgrade'],
 ]
+KEY_INSTALL_PATHS = 'install_paths'
+# Possible places for install_path argument.
+VERSION_INSTALL_PATHS = [
+    ['addons', KEY_INSTALL_PATHS],
+    # Asterisk means, expand to all modes (keys in modes dict)
+    ['modes', '*', 'addons', KEY_INSTALL_PATHS],
+]
 
 DEL_OPT_RE = r'DEL->{(.*)}'
 ENV_OPT_RE = r'(\$([A-Z0-9]+(?:_[A-Z0-9]+)*))'
 
 
-# TODO: move this to footil.
-def _get_from_dict(data: dict, keys: list) -> any:
+def get_from_nested_dict(data: dict, keys: list) -> any:
     """Retrieve value from nested dict."""
     return functools.reduce(operator.getitem, keys, data)
+
+
+def pop_from_nested_dict(data: dict, keys: list):
+    """Pop element at the end of nested dict using keys list as a path."""
+    if len(keys) == 1:
+        return data.pop(keys[0])
+    key = keys[-1]
+    inner_dct = get_from_nested_dict(data, keys[:-1])
+    return inner_dct.pop(key)
+
+
+def unpack_keys_from_nested_dict(data: dict, keys_chain: list):
+    """Unpack keys lists when any key is asterisk.
+
+    Asterisk means, we have key chains for each key in place of asterisk
+
+    E.g.
+        - data={'a': {'b1': {'c': 1}, 'b2': {'c': 2}}}
+        - keys_chain=['a', '*', 'c]
+        Results in these key chains:
+        [
+            ['a', 'b1', 'c'],
+            ['a', 'b2', 'c'],
+        ]
+
+    """
+    unpacked = [[]]
+    for idx, key in enumerate(keys_chain):
+        if key == '*':
+            new_unpacked = []
+            for path_keys in unpacked:
+                prev_keys = path_keys[:idx]
+                asterisk_keys = get_from_nested_dict(data, prev_keys).keys()
+                new_unpacked.extend(
+                    prev_keys + [k] for k in asterisk_keys
+                )
+            unpacked = new_unpacked
+        else:
+            for keys in unpacked:
+                keys.append(key)
+    return unpacked
 
 
 def _find_data_by_key(datas: list, key: str, val: any) -> dict:
@@ -46,9 +94,53 @@ def _render_env_placeholders(opt):
 class YamlParser(parser_orig.YamlParser):
     """Parser that can additionally parse install addons option."""
 
+    def __init__(self, parsed):
+        self.postprocess_parsed(parsed)
+        super().__init__(parsed)
+
     @property
     def _version_list_paths(self):
         return VERSION_LIST_PATHS
+
+    def postprocess_parsed(self, parsed):
+        # Handle install_path arg.
+        self._parse_install_paths(parsed)
+
+    def _parse_install_paths(self, parsed):
+        versions = parsed['migration']['versions']
+        for version in versions:
+            unpacked_keys = []
+            for vpaths in VERSION_INSTALL_PATHS:
+                # It is expected that some paths might not be defined
+                # in parsed file.
+                try:
+                    unpacked_keys.extend(unpack_keys_from_nested_dict(version, vpaths))
+                except KeyError:
+                    continue
+            for keys in unpacked_keys:
+                try:
+                    paths = pop_from_nested_dict(version, keys)
+                except KeyError:
+                    continue
+                # Parent dict is expected to be addons dict.
+                addons_cfg = get_from_nested_dict(version, keys[:-1])
+                for path in paths:
+                    self._parse_install_path(addons_cfg, path)
+
+    def _parse_install_path(self, addons_cfg: dict, path: str):
+        with open(path, 'r') as f:
+            modules_dct = yaml.safe_load(f)
+            try:
+                modules = modules_dct['install']
+            except Exception as e:
+                raise ParseError(f"install_path file expects 'install' key. Error: {e}")
+            if not isinstance(modules, list):
+                raise ParseError("'install_paths' key must be a list")
+        addons_cfg.setdefault('install', [])
+        install = addons_cfg['install']
+        for module in modules:
+            if module not in install:
+                install.append(module)
 
     @classmethod
     def parser_from_buffer(cls, fp, *extra_fps):
@@ -103,12 +195,12 @@ class YamlParser(parser_orig.YamlParser):
 
     def _merge_dict(self, keys, extras):
         try:
-            main_dict = _get_from_dict(self.parsed, keys)
+            main_dict = get_from_nested_dict(self.parsed, keys)
         except KeyError:
             return
         for extra in extras:
             try:
-                extra_dict = _get_from_dict(extra, keys)
+                extra_dict = get_from_nested_dict(extra, keys)
                 mergedeep.merge(main_dict, extra_dict, strategy=ADDITIVE_STRAT)
             except KeyError:
                 continue
@@ -143,7 +235,7 @@ class YamlParser(parser_orig.YamlParser):
         def update_data(data):
             for keys_path in self._version_list_paths:
                 try:
-                    vals_list = _get_from_dict(data, keys_path)
+                    vals_list = get_from_nested_dict(data, keys_path)
                     update_method(data, keys_path, vals_list)
                 except KeyError:
                     continue

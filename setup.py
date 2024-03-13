@@ -23,7 +23,7 @@ setup(
     license='AGPLv3+',
     packages=find_packages(),
     install_requires=[
-        'marabunta>=0.10.6',
+        'marabunta>=0.12.0',
         'mergedeep>=1.3.4',
         'PyYAML>=6.0',
     ],
