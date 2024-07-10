@@ -25,7 +25,11 @@ setup(
     install_requires=[
         'marabunta>=0.12.0',
         'mergedeep>=1.3.4',
-        'PyYAML>=6.0',
+        'PyYAML>=6.0.1',
+        # marabunta uses distutils, but it was removed in 3.12, so
+        # we must install setuptools manually, before marabunta fixes
+        # this themselves.
+        'setuptools>=70.3.0',
     ],
     tests_require=test_deps,
     extras_require=extras,
@@ -35,14 +39,15 @@ setup(
     classifiers=[
         'Intended Audience :: Developers',
         'Natural Language :: English',
-        'License :: OSI Approved :: ' +
-        'GNU Affero General Public License v3 or later (AGPLv3+)',
+        'License :: OSI Approved :: '
+        + 'GNU Affero General Public License v3 or later (AGPLv3+)',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy'
     ],
